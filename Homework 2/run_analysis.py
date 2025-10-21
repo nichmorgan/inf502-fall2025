@@ -9,4 +9,5 @@ from loadData import *  # this will import ALL defined functions from your loadD
 
 # where do you want to run the bout analysis?
 
-loadFitbit()
+fitbit_df = loadFitbit()
+actigraph_df = loadActigraph()
