@@ -102,7 +102,7 @@ def loadFitbitFile(path: Path, metric_name: Measure) -> pd.DataFrame:
 def loadActigraph(path: str = "./data/actigraph"):
     path_list = tqdm(get_files(path), desc="Loading actigraph", unit=" file")
     df = pd.concat(map(loadActigraphFile, path_list), ignore_index=True)
-    df.to_csv("actigraph.csv", index=False)
+    df.sort_values(["Subject", "DateTime"], inplace=True)
     return df
 
     # you can fill in the rest, I know you can.
