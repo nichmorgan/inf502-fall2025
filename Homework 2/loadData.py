@@ -133,3 +133,54 @@ def loadActigraphFile(path: Path) -> pd.DataFrame:
     df["Subject"] = subject
 
     return df
+
+
+def loadClinical(path: str = "./data/clinical") -> pd.DataFrame:
+    """Load clinical text files from the clinical folder.
+
+    Each file is expected to be a small text file with `key: value` lines
+    (example provided in repo: `age: 21`). The subject id is taken from the
+    filename before the first underscore (e.g. `101_clinical.txt` -> `101`).
+
+    Returns a DataFrame with a `Subject` column (string) and parsed fields.
+    """
+    path_obj = Path(path)
+    if not path_obj.exists() or not path_obj.is_dir():
+        raise FileNotFoundError(f"Clinical path not found: {path}")
+
+    records = []
+    for p in sorted(path_obj.glob("*_clinical.txt")):
+        subject = p.name.split("_", 1)[0]
+        with p.open() as fh:
+            data = {}
+            for line in fh:
+                line = line.strip()
+                if not line or ":" not in line:
+                    continue
+                k, v = line.split(":", 1)
+                k = k.strip().lower()
+                v = v.strip()
+                data[k] = v
+
+        # normalize a few known numeric fields
+        if "age" in data:
+            try:
+                data["age"] = int(float(data["age"]))
+            except Exception:
+                pass
+        if "mass" in data:
+            try:
+                data["mass"] = float(data["mass"])
+            except Exception:
+                pass
+
+        data["Subject"] = subject
+        records.append(data)
+
+    if not records:
+        return pd.DataFrame(columns=["Subject"])  # empty frame
+
+    df = pd.DataFrame.from_records(records)
+    # Ensure Subject is string to match other loaders
+    df["Subject"] = df["Subject"].astype(str)
+    return df
