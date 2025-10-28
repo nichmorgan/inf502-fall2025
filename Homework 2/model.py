@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+
+from loadData import Measure
 
 
 def get_metrics(y_true, y_pred):
@@ -43,3 +46,42 @@ def plot_residuals(y_true, y_pred):
 
     plt.tight_layout()
     return fig
+
+
+def findBouts(
+    dataFrame: pd.DataFrame,
+    column_name: str,
+    minimum_threshold: float,
+    minimum_duration_in_minutes: int,
+    tolerance: float,
+):
+    """Find bouts using DateTime differences, grouped by Subject."""
+    # Filter to only active rows (above threshold)
+    active_df = dataFrame[dataFrame[column_name] >= minimum_threshold].copy()
+
+    bouts: list[pd.DataFrame] = []
+    durations: list[int] = []
+
+    # Process each subject separately
+    for subject_id, subject_data in active_df.groupby("Subject"):
+        subject_data = subject_data.sort_values("DateTime").copy()
+
+        # Calculate time difference between consecutive rows (in minutes)
+        subject_data["time_diff"] = (
+            subject_data["DateTime"].diff().dt.total_seconds() / 60
+        )
+
+        # New bout starts when gap > 1 + tolerance minutes
+        subject_data["is_new_bout"] = subject_data["time_diff"] > (1 + tolerance)
+        subject_data["bout_id"] = subject_data["is_new_bout"].fillna(True).cumsum()
+
+        # Group by bout and filter by minimum duration
+        for _, group in subject_data.groupby("bout_id"):
+            duration = len(group)  # Each row = 1 minute
+            if duration >= minimum_duration_in_minutes:
+                bouts.append(
+                    group.drop(columns=["time_diff", "is_new_bout", "bout_id"])
+                )
+                durations.append(duration)
+
+    return bouts, durations
